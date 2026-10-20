@@ -1,3 +1,5 @@
+import './src/lib/webFrame';
+
 import { registerRootComponent } from 'expo';
 
 import App from './App';

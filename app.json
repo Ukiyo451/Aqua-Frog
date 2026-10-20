@@ -19,7 +19,11 @@
       "package": "com.aquafrog.lily"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Lily",
+      "shortName": "Lily",
+      "themeColor": "#14C6D6",
+      "backgroundColor": "#FFFFFF"
     },
     "scheme": "lily",
     "plugins": [

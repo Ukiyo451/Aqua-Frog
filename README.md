@@ -12,6 +12,12 @@ npx expo start        # scan the QR code with Expo Go on your iPhone
 npx expo start --web  # or preview in a browser
 ```
 
+## Web, iOS and Android from one codebase
+
+- **Web:** `npm run export:web` builds a static site into `dist/` (relative paths, so it works at any URL). The `Web` GitHub Actions workflow builds it on every PR and deploys `main` to GitHub Pages at https://ukiyo451.github.io/Aqua-Frog/ — turn it on once in **Settings → Pages → Source: GitHub Actions**. On a desktop browser the app sits in a phone-width column.
+- **iOS:** `npx eas-cli@latest build -p ios` (needs an Apple Developer account), then `npx eas-cli@latest submit -p ios` for TestFlight / the App Store.
+- **Android / Samsung:** `npx eas-cli@latest build -p android --profile preview` gives an installable `.apk` for any Samsung phone; the `production` profile builds the `.aab` for Google Play or the Galaxy Store.
+
 On web you can jump to any screen with a query string: `?step=welcome`, `firstSip`, `reminders`, `goal`, `feelBest`, `analyzing`, `paywall` or `home`.
 
 ## What's in it
