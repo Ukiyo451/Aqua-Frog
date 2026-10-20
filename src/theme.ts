@@ -1,0 +1,30 @@
+export const colors = {
+  water: '#14C6D6',
+  waterDeep: '#0AAFC0',
+  waterLight: '#D7F6F9',
+  ink: '#262F3D',
+  inkSoft: '#5B6474',
+  muted: '#A3AAB6',
+  silhouette: '#EDEFF2',
+  bg: '#FFFFFF',
+  pink: '#FF5FA2',
+  pinkSoft: '#FCD9E8',
+  purple: '#8E3BE8',
+  purpleSoft: '#B9A3F5',
+  blue: '#3E64E6',
+  frog: '#7ED957',
+  frogDark: '#5CBF45',
+  frogDeep: '#3F9A35',
+  belly: '#E6F9C6',
+  lily: '#FF8DBE',
+  lilyDeep: '#FF5FA2',
+  sun: '#FFD45C',
+};
+
+export const fonts = {
+  regular: 'Nunito_400Regular',
+  semibold: 'Nunito_600SemiBold',
+  bold: 'Nunito_700Bold',
+  extra: 'Nunito_800ExtraBold',
+  black: 'Nunito_900Black',
+};

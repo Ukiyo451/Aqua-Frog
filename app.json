@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Lily",
+    "slug": "lily",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.aquafrog.lily"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#14C6D6",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.aquafrog.lily"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "name": "Lily",
+      "shortName": "Lily",
+      "themeColor": "#14C6D6",
+      "backgroundColor": "#FFFFFF"
+    },
+    "scheme": "lily",
+    "plugins": [
+      "expo-notifications"
+    ]
+  }
+}
