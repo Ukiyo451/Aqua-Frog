@@ -2,6 +2,7 @@ import { useEffect, useId } from 'react';
 import { StyleProp, ViewStyle } from 'react-native';
 import Animated, {
   Easing,
+  interpolateColor,
   SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
@@ -16,6 +17,12 @@ import { colors } from '../theme';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
+const AnimatedG = Animated.createAnimatedComponent(G);
+
+// Dehydrated look: Lily's skin dries out to this olive tone and her lids take on the blend.
+const DRY_TINT = '#C9A968';
+const DRY_SKIN = '#ABBC61';
+const CRACK = '#8C7340';
 
 export type Mood = 'happy' | 'sad' | 'cool' | 'wow';
 
@@ -48,8 +55,9 @@ function outline(fill: string) {
   ];
 }
 
-function LilyFlower() {
+function LilyFlower({ hydration }: { hydration?: SharedValue<number> }) {
   const petals = [-60, -30, 0, 30, 60];
+  const wilt = useAnimatedProps(() => ({ opacity: hydration ? (1 - hydration.value) * 0.75 : 0 }));
   return (
     <G rotation={22} origin="180, 34">
       <Ellipse cx={180} cy={38} rx={18} ry={5} fill={colors.frogDeep} opacity={0.45} />
@@ -66,6 +74,34 @@ function LilyFlower() {
         />
       ))}
       <Circle cx={180} cy={31} r={5} fill={colors.sun} />
+      {/* a thirsty lily fades to a dry, papery brown */}
+      <AnimatedG animatedProps={wilt}>
+        {petals.map((deg) => (
+          <Ellipse key={deg} cx={180} cy={22} rx={6.5} ry={13} fill="#C9A27A" origin="180, 34" rotation={deg} />
+        ))}
+      </AnimatedG>
+    </G>
+  );
+}
+
+const lerp = (a: number, b: number, t: number) => {
+  'worklet';
+  return a + (b - a) * t;
+};
+
+/** A frown that curls up into a grin as Lily drinks; her tongue only shows once she's happy. */
+function HydrationMouth({ hydration }: { hydration: SharedValue<number> }) {
+  const line = useAnimatedProps(() => {
+    const t = hydration.value;
+    const y1 = lerp(126, 108, t);
+    const qy = lerp(112, 142, t);
+    return { d: `M${lerp(84, 70, t)} ${y1} Q110 ${qy} ${lerp(136, 150, t)} ${y1}` };
+  });
+  const tongue = useAnimatedProps(() => ({ opacity: Math.min(1, Math.max(0, (hydration.value - 0.55) * 4)) }));
+  return (
+    <G>
+      <AnimatedPath animatedProps={line} stroke="#2E3A2A" strokeWidth={4.5} strokeLinecap="round" fill="none" />
+      <AnimatedPath animatedProps={tongue} d="M99 122 Q110 136 121 122 Z" fill="#FF7E9D" />
     </G>
   );
 }
@@ -95,17 +131,29 @@ interface EyeProps {
   cx: number;
   lid: SharedValue<number>;
   mood: Mood;
+  hydration?: SharedValue<number>;
 }
 
-function Eye({ cx, lid, mood }: EyeProps) {
-  const lidProps = useAnimatedProps(() => ({ ry: lid.value * 22 }));
+function Eye({ cx, lid, mood, hydration }: EyeProps) {
+  // the lid comes down from the top: a blink closes it fully, thirst leaves it half shut
+  const lidProps = useAnimatedProps(() => {
+    const h = hydration ? hydration.value : 1;
+    const r = Math.max(lid.value * 22, (1 - h) * 12);
+    return {
+      cy: 34 + r,
+      ry: r,
+      fill: hydration ? interpolateColor(h, [0, 1], [DRY_SKIN, colors.frog]) : colors.frog,
+    };
+  });
+  const bags = useAnimatedProps(() => ({ opacity: hydration ? (1 - hydration.value) * 0.8 : 0 }));
   const pupilY = mood === 'sad' ? 64 : 59;
   return (
     <G>
       <Circle cx={cx} cy={56} r={20} fill="#fff" />
       <Circle cx={cx + (cx < 110 ? 3 : -3)} cy={pupilY} r={mood === 'wow' ? 8 : 11} fill="#1F2A37" />
       <Circle cx={cx - 2} cy={pupilY - 5} r={4} fill="#fff" />
-      <AnimatedEllipse cx={cx} cy={56} rx={22} fill={colors.frog} animatedProps={lidProps} />
+      <AnimatedEllipse cx={cx} rx={23} animatedProps={lidProps} />
+      <AnimatedPath animatedProps={bags} d={`M${cx - 14} 80 Q${cx} 88 ${cx + 14} 80`} stroke={CRACK} strokeWidth={3} strokeLinecap="round" fill="none" />
       {mood === 'sad' && (
         <Path
           d={cx < 110 ? `M${cx - 18} 40 L${cx + 14} 48` : `M${cx + 18} 40 L${cx - 14} 48`}
@@ -118,7 +166,47 @@ function Eye({ cx, lid, mood }: EyeProps) {
   );
 }
 
-function ColorBody({ mood, lid }: { mood: Mood; lid: SharedValue<number> }) {
+interface ColorBodyProps {
+  mood: Mood;
+  lid: SharedValue<number>;
+  hydration?: SharedValue<number>;
+  /** Drawn over the skin but under the face, e.g. the water inside her. */
+  inside?: React.ReactNode;
+}
+
+/** Dry, cracked skin that fades away as Lily rehydrates, plus heat shimmer above her head. */
+function Thirst({ hydration }: { hydration: SharedValue<number> }) {
+  const shimmer = useSharedValue(0);
+  useEffect(() => {
+    shimmer.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.sin) }), -1, true);
+  }, [shimmer]);
+  const tint = useAnimatedProps(() => ({ opacity: (1 - hydration.value) * 0.6 }));
+  const cracks = useAnimatedProps(() => ({ opacity: Math.max(0, 1 - hydration.value * 1.6) }));
+  const heat = useAnimatedProps(() => ({
+    opacity: Math.max(0, 1 - hydration.value * 3) * (0.35 + shimmer.value * 0.65),
+  }));
+  const crack = { stroke: CRACK, strokeWidth: 2.2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
+  return (
+    <G>
+      <AnimatedG animatedProps={tint}>{outline(DRY_TINT)}</AnimatedG>
+      <AnimatedG animatedProps={cracks}>
+        <Path d="M74 70 L82 78 L78 86 M82 78 L90 76" {...crack} />
+        <Path d="M140 136 L148 128 L156 132 M148 128 L146 120" {...crack} />
+        <Path d="M96 196 L104 204 L100 214 M104 204 L112 202" {...crack} />
+        <Path d="M40 206 L48 214 L44 222" {...crack} />
+        <Path d="M172 200 L178 210 L186 212" {...crack} />
+      </AnimatedG>
+      <AnimatedG animatedProps={heat}>
+        {[80, 110, 140].map((x) => (
+          <Path key={x} d={`M${x} 22 q-5 -6 0 -12 q5 -6 0 -12`} stroke="#E8B04A" strokeWidth={3} strokeLinecap="round" fill="none" />
+        ))}
+      </AnimatedG>
+    </G>
+  );
+}
+
+function ColorBody({ mood, lid, hydration, inside }: ColorBodyProps) {
+  const cheeks = useAnimatedProps(() => ({ opacity: hydration ? 0.15 + hydration.value * 0.5 : 0.65 }));
   return (
     <G>
       {/* back legs + feet */}
@@ -151,13 +239,17 @@ function ColorBody({ mood, lid }: { mood: Mood; lid: SharedValue<number> }) {
       <Circle cx={124} cy={66} r={4} fill="#6CCB50" />
       <Circle cx={146} cy={144} r={4} fill="#6CCB50" />
       <Circle cx={70} cy={160} r={5} fill="#6CCB50" />
-      <Eye cx={56} lid={lid} mood={mood} />
-      <Eye cx={164} lid={lid} mood={mood} />
+      {hydration && <Thirst hydration={hydration} />}
+      {inside}
+      <Eye cx={56} lid={lid} mood={mood} hydration={hydration} />
+      <Eye cx={164} lid={lid} mood={mood} hydration={hydration} />
       <Circle cx={102} cy={92} r={2.5} fill={colors.frogDeep} />
       <Circle cx={118} cy={92} r={2.5} fill={colors.frogDeep} />
-      <Ellipse cx={36} cy={112} rx={13} ry={7} fill={colors.lily} opacity={0.65} />
-      <Ellipse cx={184} cy={112} rx={13} ry={7} fill={colors.lily} opacity={0.65} />
-      <Mouth mood={mood} />
+      <AnimatedG animatedProps={cheeks}>
+        <Ellipse cx={36} cy={112} rx={13} ry={7} fill={colors.lily} />
+        <Ellipse cx={184} cy={112} rx={13} ry={7} fill={colors.lily} />
+      </AnimatedG>
+      {hydration && mood === 'happy' ? <HydrationMouth hydration={hydration} /> : <Mouth mood={mood} />}
       {mood === 'cool' && (
         <G>
           <Rect x={28} y={42} width={58} height={32} rx={14} fill="#1E2430" />
@@ -168,7 +260,7 @@ function ColorBody({ mood, lid }: { mood: Mood; lid: SharedValue<number> }) {
         </G>
       )}
       {mood === 'sad' && <Path d="M196 72 Q206 88 196 96 Q186 88 196 72 Z" fill="#8ADDF5" />}
-      <LilyFlower />
+      <LilyFlower hydration={hydration} />
     </G>
   );
 }
@@ -227,17 +319,26 @@ export interface LilyProps {
   width: number;
   mood?: Mood;
   variant?: 'color' | 'silhouette';
-  /** 0..1 water level, silhouette only. */
+  /** 0..1 water level. Silhouette: fills her solid; colour: a see-through water line inside her. */
   fill?: number;
+  /**
+   * 0..1 how hydrated Lily looks (colour only). 0 is parched: olive cracked skin, droopy
+   * lids, a frown, a wilted flower and a slump; 1 is her normal happy self.
+   */
+  hydration?: number;
   crop?: 'full' | 'face';
   /** Breathing + blinking. */
   idle?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
-export function Lily({ width, mood = 'happy', variant = 'color', fill = 0, crop = 'full', idle = true, style }: LilyProps) {
+export function Lily({ width, mood = 'happy', variant = 'color', fill = 0, hydration, crop = 'full', idle = true, style }: LilyProps) {
   const clipId = `lily${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const lid = useSharedValue(0);
+  const thirst = useSharedValue(hydration ?? 1);
+  useEffect(() => {
+    thirst.value = withTiming(hydration ?? 1, { duration: 1600, easing: Easing.out(Easing.cubic) });
+  }, [hydration, thirst]);
   const breath = useSharedValue(0);
   const vbH = crop === 'face' ? FACE_H : VB_H;
   const height = (width * vbH) / VB_W;
@@ -256,15 +357,37 @@ export function Lily({ width, mood = 'happy', variant = 'color', fill = 0, crop 
     breath.value = withRepeat(withTiming(1, { duration: 1700, easing: Easing.inOut(Easing.sin) }), -1, true);
   }, [idle, lid, breath]);
 
-  const breathe = useAnimatedStyle(() => ({
-    transform: [{ scaleY: 1 + breath.value * 0.018 }, { scaleX: 1 - breath.value * 0.008 }],
-  }));
+  const breathe = useAnimatedStyle(() => {
+    // a thirsty frog slumps a little lower and wider
+    const slump = hydration === undefined ? 0 : (1 - thirst.value) * 0.07;
+    return {
+      transform: [{ scaleY: (1 - slump) * (1 + breath.value * 0.018) }, { scaleX: (1 + slump * 0.4) * (1 - breath.value * 0.008) }],
+    };
+  });
 
   return (
     <Animated.View style={[{ width, height, transformOrigin: 'bottom' }, breathe, style]}>
       <Svg width={width} height={height} viewBox={`0 0 ${VB_W} ${vbH}`}>
         {variant === 'color' ? (
-          <ColorBody mood={mood} lid={lid} />
+          <>
+            {fill > 0 && (
+              <Defs>
+                <ClipPath id={clipId}>{outline('#000')}</ClipPath>
+              </Defs>
+            )}
+            <ColorBody
+              mood={mood}
+              lid={lid}
+              hydration={hydration === undefined ? undefined : thirst}
+              inside={
+                fill > 0 ? (
+                  <G opacity={0.35}>
+                    <Water fill={fill} clipId={clipId} />
+                  </G>
+                ) : null
+              }
+            />
+          </>
         ) : (
           <>
             <Defs>

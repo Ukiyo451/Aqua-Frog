@@ -36,6 +36,15 @@ const TIPS = [
   'Drink a glass before every meal to hit your goal without thinking about it.',
 ];
 
+/** What Lily says about how she feels, from parched to fully hydrated. */
+function moodLine(progress: number): string {
+  if (progress >= 1) return 'Lily is fully hydrated and glowing!';
+  if (progress >= 0.75) return 'Almost there, Lily feels great';
+  if (progress >= 0.4) return 'Lily is perking up';
+  if (progress > 0) return 'Lily is still thirsty';
+  return 'Lily is parched… give her a sip';
+}
+
 /** The day-streak badge: a circle that unrolls into "1 day" and tucks back in. */
 function StreakBadge({ streak }: { streak: number }) {
   const open = useSharedValue(0);
@@ -173,14 +182,19 @@ export function Home() {
       <Bounce onPress={toggle} scaleTo={0.97} style={styles.stage} haptic={false}>
         <Animated.View style={frogStyle}>
           {showRemaining ? (
-            <Animated.View entering={ZoomIn.springify().damping(12)}>
-              <Lily width={frogWidth} />
+            <Animated.View key="gauge" entering={FadeIn.duration(250)}>
+              <Lily width={frogWidth} variant="silhouette" fill={Math.max(0.012, progress)} />
             </Animated.View>
           ) : (
-            <Lily width={frogWidth} variant="silhouette" fill={Math.max(0.012, progress)} />
+            <Animated.View key="lily" entering={ZoomIn.springify().damping(12)}>
+              <Lily width={frogWidth} hydration={progress} fill={Math.max(0.0015, progress)} />
+            </Animated.View>
           )}
         </Animated.View>
       </Bounce>
+      <Animated.Text key={moodLine(progress)} entering={FadeIn.duration(400)} style={styles.mood} testID="mood">
+        {moodLine(progress)}
+      </Animated.Text>
 
       <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.drinks}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.drinkRow}>
@@ -295,6 +309,7 @@ const styles = StyleSheet.create({
   amount: { fontFamily: fonts.extra, fontSize: 40, color: colors.water, letterSpacing: -0.5 },
   caption: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted, marginTop: -4 },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  mood: { fontFamily: fonts.bold, fontSize: 14, color: colors.inkSoft, textAlign: 'center', marginBottom: 6 },
   drinks: { height: 96 },
   drinkRow: { paddingHorizontal: 12, gap: 6, alignItems: 'center' },
   charBtn: { alignItems: 'center', width: 70 },
