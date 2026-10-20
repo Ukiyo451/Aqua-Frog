@@ -23,6 +23,7 @@ import { colors, fonts } from '../../theme';
 import { AppIconTile } from './AppIcon';
 import { FrogFaceShape, GREEN_FACE, smartSummary, useReminderControl, Wave } from './common';
 import { goalCalculated, goalLabel } from './GoalCalculator';
+import { RowIcon, RowIconName } from './RowIcons';
 import { languageFlag } from './Simple';
 import { scheduleReminders } from './scheduling';
 import { playSound, setSoundsEnabled } from './sounds';
@@ -208,10 +209,10 @@ function GoalNumber({ ml, units }: { ml: number; units: Units }) {
   );
 }
 
-function Row({ i, label, value, right, onPress, testID }: { i: number; label: string; value?: string; right?: ReactNode; onPress: () => void; testID: string }) {
+function Row({ i, icon, label, value, right, onPress, testID }: { i: number; icon: RowIconName; label: string; value?: string; right?: ReactNode; onPress: () => void; testID: string }) {
   return (
     <Enter i={i}>
-      <ListRow label={label} value={value} right={right} onPress={onPress} testID={testID} chevron />
+      <ListRow left={<RowIcon name={icon} delay={Math.min(i, 14) * 38 + 160} />} label={label} value={value} right={right} onPress={onPress} testID={testID} chevron />
     </Enter>
   );
 }
@@ -246,7 +247,7 @@ export function SettingsScreen() {
     }, 1500);
   };
 
-  const rows: { label: string; value?: string; right?: ReactNode; onPress: () => void; id: string }[] = [
+  const rows: { id: RowIconName; label: string; value?: string; right?: ReactNode; onPress: () => void }[] = [
     { id: 'drinks', label: 'Add/Edit drinks list', onPress: () => nav.push('drinks') },
     {
       id: 'units',
@@ -288,12 +289,13 @@ export function SettingsScreen() {
         </Enter>
         <View style={{ height: 16 }} />
         {rows.map((r, i) => (
-          <Row key={r.id} i={3 + i} label={r.label} value={r.value} right={r.right} onPress={r.onPress} testID={`row-${r.id}`} />
+          <Row key={r.id} i={3 + i} icon={r.id} label={r.label} value={r.value} right={r.right} onPress={r.onPress} testID={`row-${r.id}`} />
         ))}
         <Divider />
-        <Row i={15} label="Donate to creators" right={<Text style={styles.emoji}>💝</Text>} onPress={() => nav.push('donate')} testID="row-donate" />
+        <Row i={15} icon="donate" label="Donate to creators" right={<Text style={styles.emoji}>💝</Text>} onPress={() => nav.push('donate')} testID="row-donate" />
         <Row
           i={16}
+          icon="apps"
           label="Apps by Lily creators"
           right={
             <Svg width={26} height={26} viewBox="0 0 100 100">
