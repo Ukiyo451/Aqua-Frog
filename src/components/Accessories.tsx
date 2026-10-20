@@ -195,6 +195,8 @@ function AccessoryShape({ kind, accent, deep, sway, uid, flat }: AccessoryProps)
               <Path d="M58 52 Q110 66 162 52" stroke="rgba(0,0,0,0.18)" strokeWidth={3} fill="none" />
             </G>
           )}
+          {!flat && <Path d={crown} stroke={accent} strokeWidth={2.5} fill="none" strokeLinejoin="round" />}
+          {!flat && <Path d={brim} stroke={accent} strokeWidth={2.5} fill="none" strokeLinejoin="round" />}
         </G>
       );
     }
