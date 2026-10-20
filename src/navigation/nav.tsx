@@ -43,6 +43,9 @@ const NavContext = createContext<Nav | null>(null);
 
 let keySeq = 0;
 
+// Screens that draw their own dimmed backdrop over Home instead of a white page.
+const TRANSPARENT = new Set(['backup']);
+
 export function NavProvider({
   screens,
   children,
@@ -104,11 +107,12 @@ export function NavProvider({
         {children}
         {routes.map((r) => {
           const Screen = screens[r.name];
-          const entering =
-            r.mode === 'push' ? SlideInRight.springify().damping(22).stiffness(190) : r.mode === 'modal' ? SlideInDown.springify().damping(22).stiffness(170) : FadeIn.duration(260);
-          const exiting = r.mode === 'push' ? SlideOutRight.duration(240) : r.mode === 'modal' ? SlideOutDown.duration(260) : FadeOut.duration(200);
+          const entering = TRANSPARENT.has(r.name)
+            ? FadeIn.duration(200)
+            : r.mode === 'push' ? SlideInRight.springify().damping(22).stiffness(190) : r.mode === 'modal' ? SlideInDown.springify().damping(22).stiffness(170) : FadeIn.duration(260);
+          const exiting = TRANSPARENT.has(r.name) ? FadeOut.duration(200) : r.mode === 'push' ? SlideOutRight.duration(240) : r.mode === 'modal' ? SlideOutDown.duration(260) : FadeOut.duration(200);
           return (
-            <Animated.View key={r.key} entering={entering} exiting={exiting} style={[StyleSheet.absoluteFill, styles.screen]}>
+            <Animated.View key={r.key} entering={entering} exiting={exiting} style={[StyleSheet.absoluteFill, !TRANSPARENT.has(r.name) && styles.screen]}>
               <Screen params={r.params ?? {}} />
             </Animated.View>
           );

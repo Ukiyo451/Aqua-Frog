@@ -27,7 +27,8 @@ Run lint and typecheck before declaring any task done.
 
 - The app has two top-level states, chosen in `App.tsx`: the onboarding flow (`src/screens/onboarding/OnboardingFlow.tsx`, a step machine with custom transitions such as the water wipe) and `src/screens/Home.tsx`.
 - All illustration and motion is code: SVG via `react-native-svg`, animation via `react-native-reanimated`. Don't add image or Lottie assets for characters or effects.
-- On web, `?step=<name>` (e.g. `?step=goal`, `?step=home`) jumps straight to a screen for previewing.
+- Screens past onboarding use the small stack navigator in `src/navigation/nav.tsx` (`useNav()`: push, modal, fade, back, toast). Home stays mounted underneath. Each area registers its screens in `src/screens/<area>/index.ts`, merged by `src/navigation/registry.ts`.
+- On web, `?step=<name>` (e.g. `?step=goal`, `?step=home`, `?step=settings`) jumps straight to an onboarding step or opens Home with that screen on top.
 
 ## Building with EAS
 

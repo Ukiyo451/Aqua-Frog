@@ -18,7 +18,7 @@ npx expo start --web  # or preview in a browser
 - **iOS:** `npx eas-cli@latest build -p ios` (needs an Apple Developer account), then `npx eas-cli@latest submit -p ios` for TestFlight / the App Store.
 - **Android / Samsung:** `npx eas-cli@latest build -p android --profile preview` gives an installable `.apk` for any Samsung phone; the `production` profile builds the `.aab` for Google Play or the Galaxy Store.
 
-On web you can jump to any screen with a query string: `?step=welcome`, `firstSip`, `reminders`, `goal`, `feelBest`, `analyzing`, `paywall` or `home`.
+On web you can jump to any screen with a query string: onboarding steps (`?step=welcome`, `firstSip`, `reminders`, `goal`, `feelBest`, `analyzing`, `paywall`), `home`, or any app screen by its registered name (`?step=settings`, `calendar`, `drinks`, `characters`, `challenge&id=tea`, `premium`, ...).
 
 ## What's in it
 

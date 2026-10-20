@@ -13,7 +13,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path, Rect } from 'react-native-svg';
+import type { Accessory, FrogPalette } from '../lib/characters';
 import { colors } from '../theme';
+import { AccessoryBack, AccessoryFront, HAT_ROOM, light, mixHex, needsRoom, shade } from './Accessories';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
@@ -26,18 +28,18 @@ const CRACK = '#8C7340';
 
 export type Mood = 'happy' | 'sad' | 'cool' | 'wow';
 
-const VB_W = 220;
-const VB_H = 260;
+export const VB_W = 220;
+export const VB_H = 260;
 const FACE_H = 156;
 // Highest point of the silhouette (top of the eyes) — fill = 1 reaches it.
-const TOP_Y = 28;
+export const TOP_Y = 28;
 const TOES = [8, 24, 40, 180, 196, 212];
 
 /**
  * Every shape that makes up Lily's outline. Drawn flat for the silhouette and reused
  * as the clip path for the water that fills her up.
  */
-function outline(fill: string) {
+export function outline(fill: string) {
   return [
     <Ellipse key="lf" cx={40} cy={245} rx={38} ry={12} fill={fill} />,
     <Ellipse key="rf" cx={180} cy={245} rx={38} ry={12} fill={fill} />,
@@ -55,12 +57,56 @@ function outline(fill: string) {
   ];
 }
 
-function LilyFlower({ hydration }: { hydration?: SharedValue<number> }) {
+/** Every colour of a frog's skin; Lily's own greens by default. */
+interface Pal {
+  body: string;
+  dark: string;
+  limb: string;
+  spot: string;
+  line: string;
+  belly: string;
+  deep: string;
+}
+
+const LILY_PAL: Pal = {
+  body: colors.frog,
+  dark: colors.frogDark,
+  limb: '#6CCF4F',
+  spot: '#6CCB50',
+  line: '#CDEFA4',
+  belly: colors.belly,
+  deep: colors.frogDeep,
+};
+
+function toPal(p?: FrogPalette): Pal {
+  if (!p) return LILY_PAL;
+  return {
+    body: p.body,
+    dark: p.dark,
+    limb: mixHex(p.body, p.dark, 0.45),
+    spot: mixHex(p.body, p.dark, 0.6),
+    line: mixHex(p.belly, p.body, 0.4),
+    belly: p.belly,
+    deep: p.deep,
+  };
+}
+
+interface FlowerProps {
+  hydration?: SharedValue<number>;
+  /** [light, deep] petal colours. */
+  petals?: [string, string];
+  center?: string;
+  deep?: string;
+  /** Outline for pale petals. */
+  edge?: string;
+}
+
+function LilyFlower({ hydration, petals: tones = [colors.lily, colors.lilyDeep], center = colors.sun, deep = colors.frogDeep, edge }: FlowerProps) {
   const petals = [-60, -30, 0, 30, 60];
   const wilt = useAnimatedProps(() => ({ opacity: hydration ? (1 - hydration.value) * 0.75 : 0 }));
   return (
     <G rotation={22} origin="180, 34">
-      <Ellipse cx={180} cy={38} rx={18} ry={5} fill={colors.frogDeep} opacity={0.45} />
+      <Ellipse cx={180} cy={38} rx={18} ry={5} fill={deep} opacity={0.45} />
       {petals.map((deg, i) => (
         <Ellipse
           key={deg}
@@ -68,12 +114,14 @@ function LilyFlower({ hydration }: { hydration?: SharedValue<number> }) {
           cy={22}
           rx={6.5}
           ry={13}
-          fill={i % 2 ? colors.lily : colors.lilyDeep}
+          fill={i % 2 ? tones[0] : tones[1]}
+          stroke={edge}
+          strokeWidth={edge ? 1.2 : undefined}
           origin="180, 34"
           rotation={deg}
         />
       ))}
-      <Circle cx={180} cy={31} r={5} fill={colors.sun} />
+      <Circle cx={180} cy={31} r={5} fill={center} />
       {/* a thirsty lily fades to a dry, papery brown */}
       <AnimatedG animatedProps={wilt}>
         {petals.map((deg) => (
@@ -132,9 +180,11 @@ interface EyeProps {
   lid: SharedValue<number>;
   mood: Mood;
   hydration?: SharedValue<number>;
+  pal: Pal;
 }
 
-function Eye({ cx, lid, mood, hydration }: EyeProps) {
+function Eye({ cx, lid, mood, hydration, pal }: EyeProps) {
+  const skin = pal.body;
   // the lid comes down from the top: a blink closes it fully, thirst leaves it half shut
   const lidProps = useAnimatedProps(() => {
     const h = hydration ? hydration.value : 1;
@@ -142,7 +192,7 @@ function Eye({ cx, lid, mood, hydration }: EyeProps) {
     return {
       cy: 34 + r,
       ry: r,
-      fill: hydration ? interpolateColor(h, [0, 1], [DRY_SKIN, colors.frog]) : colors.frog,
+      fill: hydration ? interpolateColor(h, [0, 1], [DRY_SKIN, skin]) : skin,
     };
   });
   const bags = useAnimatedProps(() => ({ opacity: hydration ? (1 - hydration.value) * 0.8 : 0 }));
@@ -157,7 +207,7 @@ function Eye({ cx, lid, mood, hydration }: EyeProps) {
       {mood === 'sad' && (
         <Path
           d={cx < 110 ? `M${cx - 18} 40 L${cx + 14} 48` : `M${cx + 18} 40 L${cx - 14} 48`}
-          stroke={colors.frogDeep}
+          stroke={pal.deep}
           strokeWidth={5}
           strokeLinecap="round"
         />
@@ -172,6 +222,12 @@ interface ColorBodyProps {
   hydration?: SharedValue<number>;
   /** Drawn over the skin but under the face, e.g. the water inside her. */
   inside?: React.ReactNode;
+  pal: Pal;
+  /** Undefined = Lily's own water lily. */
+  accessory?: Accessory;
+  accent?: string;
+  sway: SharedValue<number>;
+  uid: string;
 }
 
 /** Dry, cracked skin that fades away as Lily rehydrates, plus heat shimmer above her head. */
@@ -205,46 +261,50 @@ function Thirst({ hydration }: { hydration: SharedValue<number> }) {
   );
 }
 
-function ColorBody({ mood, lid, hydration, inside }: ColorBodyProps) {
+function ColorBody({ mood, lid, hydration, inside, pal, accessory, accent, sway, uid }: ColorBodyProps) {
+  const kind = accessory ?? 'flower';
+  // an explicit accessory (even Lily's flower with a new tint) goes through the accessory set
+  const acc = accessory ? { kind, accent: accent ?? colors.lily, deep: pal.deep, sway, uid } : undefined;
   const cheeks = useAnimatedProps(() => ({ opacity: hydration ? 0.15 + hydration.value * 0.5 : 0.65 }));
   return (
     <G>
       {/* back legs + feet */}
-      <Ellipse cx={40} cy={245} rx={38} ry={12} fill={colors.frogDark} />
-      <Ellipse cx={180} cy={245} rx={38} ry={12} fill={colors.frogDark} />
+      <Ellipse cx={40} cy={245} rx={38} ry={12} fill={pal.dark} />
+      <Ellipse cx={180} cy={245} rx={38} ry={12} fill={pal.dark} />
       {TOES.map((x) => (
-        <Circle key={x} cx={x} cy={249} r={8} fill={colors.frogDark} />
+        <Circle key={x} cx={x} cy={249} r={8} fill={pal.dark} />
       ))}
-      <Ellipse cx={50} cy={210} rx={40} ry={34} fill="#6CCF4F" />
-      <Ellipse cx={170} cy={210} rx={40} ry={34} fill="#6CCF4F" />
+      <Ellipse cx={50} cy={210} rx={40} ry={34} fill={pal.limb} />
+      <Ellipse cx={170} cy={210} rx={40} ry={34} fill={pal.limb} />
       {/* body */}
-      <Ellipse cx={110} cy={180} rx={70} ry={66} fill={colors.frog} />
-      <Ellipse cx={110} cy={188} rx={46} ry={52} fill={colors.belly} />
-      <Path d="M86 172 Q110 181 134 172" stroke="#CDEFA4" strokeWidth={3} fill="none" strokeLinecap="round" />
-      <Path d="M80 196 Q110 206 140 196" stroke="#CDEFA4" strokeWidth={3} fill="none" strokeLinecap="round" />
-      <Path d="M84 220 Q110 228 136 220" stroke="#CDEFA4" strokeWidth={3} fill="none" strokeLinecap="round" />
+      <Ellipse cx={110} cy={180} rx={70} ry={66} fill={pal.body} />
+      <Ellipse cx={110} cy={188} rx={46} ry={52} fill={pal.belly} />
+      <Path d="M86 172 Q110 181 134 172" stroke={pal.line} strokeWidth={3} fill="none" strokeLinecap="round" />
+      <Path d="M80 196 Q110 206 140 196" stroke={pal.line} strokeWidth={3} fill="none" strokeLinecap="round" />
+      <Path d="M84 220 Q110 228 136 220" stroke={pal.line} strokeWidth={3} fill="none" strokeLinecap="round" />
       {/* arms */}
-      <Ellipse cx={70} cy={198} rx={14} ry={46} rotation={-16} origin="70, 198" fill="#6CCF4F" />
-      <Ellipse cx={150} cy={198} rx={14} ry={46} rotation={16} origin="150, 198" fill="#6CCF4F" />
-      <Ellipse cx={88} cy={244} rx={20} ry={11} fill={colors.frogDark} />
-      <Ellipse cx={132} cy={244} rx={20} ry={11} fill={colors.frogDark} />
+      <Ellipse cx={70} cy={198} rx={14} ry={46} rotation={-16} origin="70, 198" fill={pal.limb} />
+      <Ellipse cx={150} cy={198} rx={14} ry={46} rotation={16} origin="150, 198" fill={pal.limb} />
+      <Ellipse cx={88} cy={244} rx={20} ry={11} fill={pal.dark} />
+      <Ellipse cx={132} cy={244} rx={20} ry={11} fill={pal.dark} />
       {[76, 88, 100, 120, 132, 144].map((x) => (
-        <Circle key={`f${x}`} cx={x} cy={250} r={6} fill={colors.frogDark} />
+        <Circle key={`f${x}`} cx={x} cy={250} r={6} fill={pal.dark} />
       ))}
       {/* head */}
-      <Circle cx={56} cy={60} r={31} fill={colors.frog} />
-      <Circle cx={164} cy={60} r={31} fill={colors.frog} />
-      <Ellipse cx={110} cy={102} rx={94} ry={50} fill={colors.frog} />
-      <Circle cx={96} cy={70} r={5} fill="#6CCB50" />
-      <Circle cx={124} cy={66} r={4} fill="#6CCB50" />
-      <Circle cx={146} cy={144} r={4} fill="#6CCB50" />
-      <Circle cx={70} cy={160} r={5} fill="#6CCB50" />
+      <Circle cx={56} cy={60} r={31} fill={pal.body} />
+      <Circle cx={164} cy={60} r={31} fill={pal.body} />
+      <Ellipse cx={110} cy={102} rx={94} ry={50} fill={pal.body} />
+      <Circle cx={96} cy={70} r={5} fill={pal.spot} />
+      <Circle cx={124} cy={66} r={4} fill={pal.spot} />
+      <Circle cx={146} cy={144} r={4} fill={pal.spot} />
+      <Circle cx={70} cy={160} r={5} fill={pal.spot} />
       {hydration && <Thirst hydration={hydration} />}
       {inside}
-      <Eye cx={56} lid={lid} mood={mood} hydration={hydration} />
-      <Eye cx={164} lid={lid} mood={mood} hydration={hydration} />
-      <Circle cx={102} cy={92} r={2.5} fill={colors.frogDeep} />
-      <Circle cx={118} cy={92} r={2.5} fill={colors.frogDeep} />
+      {acc && <AccessoryBack {...acc} />}
+      <Eye cx={56} lid={lid} mood={mood} hydration={hydration} pal={pal} />
+      <Eye cx={164} lid={lid} mood={mood} hydration={hydration} pal={pal} />
+      <Circle cx={102} cy={92} r={2.5} fill={pal.deep} />
+      <Circle cx={118} cy={92} r={2.5} fill={pal.deep} />
       <AnimatedG animatedProps={cheeks}>
         <Ellipse cx={36} cy={112} rx={13} ry={7} fill={colors.lily} />
         <Ellipse cx={184} cy={112} rx={13} ry={7} fill={colors.lily} />
@@ -260,7 +320,21 @@ function ColorBody({ mood, lid, hydration, inside }: ColorBodyProps) {
         </G>
       )}
       {mood === 'sad' && <Path d="M196 72 Q206 88 196 96 Q186 88 196 72 Z" fill="#8ADDF5" />}
-      <LilyFlower hydration={hydration} />
+      {kind === 'flower' ? (
+        acc ? (
+          <LilyFlower
+            hydration={hydration}
+            petals={[acc.accent, light(acc.accent) ? '#ECEAF0' : shade(acc.accent, 0.14)]}
+            center={light(acc.accent) ? '#FFC93C' : colors.sun}
+            edge={light(acc.accent) ? '#E3D9C6' : undefined}
+            deep={pal.deep}
+          />
+        ) : (
+          <LilyFlower hydration={hydration} />
+        )
+      ) : (
+        acc && <AccessoryFront {...acc} />
+      )}
     </G>
   );
 }
@@ -330,9 +404,29 @@ export interface LilyProps {
   /** Breathing + blinking. */
   idle?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** Skin colours of another frog from the collection. Default: Lily's greens. */
+  palette?: FrogPalette;
+  /** What she wears. Default: her water lily. */
+  accessory?: Accessory;
+  /** Accessory tint. */
+  accent?: string;
 }
 
-export function Lily({ width, mood = 'happy', variant = 'color', fill = 0, hydration, crop = 'full', idle = true, style }: LilyProps) {
+const SWAYS: Accessory[] = ['partyHat', 'scarf', 'leaf', 'bandana', 'beanie'];
+
+export function Lily({
+  width,
+  mood = 'happy',
+  variant = 'color',
+  fill = 0,
+  hydration,
+  crop = 'full',
+  idle = true,
+  style,
+  palette,
+  accessory,
+  accent,
+}: LilyProps) {
   const clipId = `lily${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const lid = useSharedValue(0);
   const thirst = useSharedValue(hydration ?? 1);
@@ -340,8 +434,27 @@ export function Lily({ width, mood = 'happy', variant = 'color', fill = 0, hydra
     thirst.value = withTiming(hydration ?? 1, { duration: 1600, easing: Easing.out(Easing.cubic) });
   }, [hydration, thirst]);
   const breath = useSharedValue(0);
+  const sway = useSharedValue(0);
+  const swaying = idle && !!accessory && SWAYS.includes(accessory);
+  useEffect(() => {
+    if (!swaying) return;
+    sway.value = withSequence(
+      withTiming(-1, { duration: 700, easing: Easing.inOut(Easing.sin) }),
+      withRepeat(withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.sin) }), -1, true),
+    );
+  }, [swaying, sway]);
+  const pal = toPal(palette);
   const vbH = crop === 'face' ? FACE_H : VB_H;
   const height = (width * vbH) / VB_W;
+  // tall hats draw above her head: full size lets them overflow upwards, the face crop
+  // zooms out a little so the hat fits inside the same box
+  const room = variant === 'color' && needsRoom(accessory) ? HAT_ROOM : 0;
+  const faceW = crop === 'face' ? (VB_W * (vbH + room)) / vbH : VB_W;
+  const svgBox =
+    crop === 'face'
+      ? { width, height, viewBox: `${(VB_W - faceW) / 2} ${-room} ${faceW} ${vbH + room}` }
+      : { width, height: (width * (vbH + room)) / VB_W, viewBox: `0 ${-room} ${VB_W} ${vbH + room}` };
+  const svgStyle = room && crop !== 'face' ? { position: 'absolute' as const, left: 0, top: (-room * width) / VB_W } : undefined;
 
   useEffect(() => {
     if (!idle) return;
@@ -367,7 +480,7 @@ export function Lily({ width, mood = 'happy', variant = 'color', fill = 0, hydra
 
   return (
     <Animated.View style={[{ width, height, transformOrigin: 'bottom' }, breathe, style]}>
-      <Svg width={width} height={height} viewBox={`0 0 ${VB_W} ${vbH}`}>
+      <Svg width={svgBox.width} height={svgBox.height} viewBox={svgBox.viewBox} style={svgStyle}>
         {variant === 'color' ? (
           <>
             {fill > 0 && (
@@ -379,6 +492,11 @@ export function Lily({ width, mood = 'happy', variant = 'color', fill = 0, hydra
               mood={mood}
               lid={lid}
               hydration={hydration === undefined ? undefined : thirst}
+              pal={pal}
+              accessory={accessory}
+              accent={accent}
+              sway={sway}
+              uid={clipId}
               inside={
                 fill > 0 ? (
                   <G opacity={0.35}>

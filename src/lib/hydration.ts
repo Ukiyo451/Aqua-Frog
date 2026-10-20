@@ -1,7 +1,7 @@
 export type Units = 'ml' | 'oz';
 export type Sex = 'male' | 'female' | 'pregnant' | 'breastfeeding' | 'none';
 export type Activity = 'low' | 'medium' | 'high';
-export type Climate = 'cold' | 'temperate' | 'hot';
+export type Climate = 'cold' | 'temperate' | 'warm' | 'hot';
 
 export interface Profile {
   sex?: Sex;
@@ -34,7 +34,7 @@ export function calculateGoal(p: Profile): number {
   const weight = p.weightKg ?? 68;
   let ml = weight * 26;
   ml += { low: 0, medium: 230, high: 480 }[p.activity ?? 'medium'];
-  ml += { cold: -120, temperate: 0, hot: 450 }[p.climate ?? 'temperate'];
+  ml += { cold: -200, temperate: 0, warm: 250, hot: 500 }[p.climate ?? 'temperate'];
   const sex = p.sex ?? 'male';
   if (sex === 'female') ml *= 0.9;
   if (sex === 'pregnant') ml = ml * 0.9 + 300;

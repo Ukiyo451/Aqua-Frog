@@ -9,10 +9,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import { CupShape } from '../lib/drinks';
 import { fromDisplay, toDisplay, Units } from '../lib/hydration';
 import { colors, fonts } from '../theme';
 import { CloseIcon } from './BottomSheet';
-import { Cup, useSlosh } from './Cup';
+import { Cup, cupGeom, useSlosh } from './Cup';
+import { mix } from './CupIcon';
 import { Bounce, PillButton } from './Pressable';
 
 interface Props {
@@ -21,6 +23,10 @@ interface Props {
   cupMl: number;
   color?: string;
   label?: string;
+  /** Cup family to pour into; the classic glass when left out. */
+  shape?: CupShape;
+  /** Pale tint of the drink, used for lids and caps. */
+  glass?: string;
   onClose: () => void;
   /** Called once the cup has flown down into the drink button. */
   onAdd: (ml: number) => void;
@@ -32,7 +38,7 @@ const { height: SCREEN_H, width: SCREEN_W } = Dimensions.get('window');
  * Full-screen glass that zooms up out of the WATER button. Drag on the glass to pour
  * some out or top it up; "+ WATER" shrinks it back down into the button.
  */
-export function AddSipOverlay({ visible, units, cupMl, color = colors.water, label = 'WATER', onClose, onAdd }: Props) {
+export function AddSipOverlay({ visible, units, cupMl, color = colors.water, label = 'WATER', shape = 'glass', glass, onClose, onAdd }: Props) {
   const insets = useSafeAreaInsets();
   const [mounted, setMounted] = useState(visible);
   const max = toDisplay(cupMl, units);
@@ -45,6 +51,16 @@ export function AddSipOverlay({ visible, units, cupMl, color = colors.water, lab
   const busy = useRef(false);
   const cupWidth = Math.min(SCREEN_W * 0.74, 300);
   const cupHeight = (cupWidth * 240) / 200;
+  const geom = cupGeom(shape);
+  const classic = shape === 'glass';
+  const handleTop = classic ? cupHeight * 0.42 : cupHeight * geom.handleY - 24;
+  const handleLeft = cupWidth * geom.handleX - 24;
+  // level at which the liquid surface passes the handle's centre
+  const handleLevel = classic ? 0.52 : (geom.bottom - geom.handleY * 240) / (geom.bottom - geom.top);
+  // very pale drinks (milk, coconut water) get dark text on their button
+  const rgb = parseInt(color.slice(1), 16);
+  const pale = 0.299 * ((rgb >> 16) & 255) + 0.587 * ((rgb >> 8) & 255) + 0.114 * (rgb & 255) > 215;
+  const handleLit = classic || color === colors.water ? '#5EE6F0' : mix(color, '#ffffff', 0.35);
 
   useEffect(() => {
     if (visible) {
@@ -112,7 +128,7 @@ export function AddSipOverlay({ visible, units, cupMl, color = colors.water, lab
     transform: [{ translateY: (1 - enter.value) * 40 }],
   }));
   const handle = useAnimatedStyle(() => ({
-    backgroundColor: level.value > 0.52 ? '#5EE6F0' : '#F7F8FA',
+    backgroundColor: level.value > handleLevel ? handleLit : '#F7F8FA',
   }));
 
   if (!mounted) return null;
@@ -126,8 +142,8 @@ export function AddSipOverlay({ visible, units, cupMl, color = colors.water, lab
       </Animated.View>
       <View style={styles.center} pointerEvents="box-none">
         <Animated.View style={cupStyle} {...pan.panHandlers} testID="cup">
-          <Cup width={cupWidth} level={level} slosh={slosh} color={color} />
-          <Animated.View style={[styles.handle, { top: cupHeight * 0.42 }, handle]} pointerEvents="none">
+          <Cup width={cupWidth} level={level} slosh={slosh} color={color} shape={shape} glass={glass} />
+          <Animated.View style={[styles.handle, { top: handleTop }, classic ? null : { alignSelf: 'auto', left: handleLeft }, handle]} pointerEvents="none">
             <Chevrons />
           </Animated.View>
         </Animated.View>
@@ -142,7 +158,7 @@ export function AddSipOverlay({ visible, units, cupMl, color = colors.water, lab
               {units}
             </Text>
           </View>
-          <PillButton label={`+ ${label}`} variant="water" onPress={add} style={[styles.addBtn, { backgroundColor: color }]} testID="add-water" />
+          <PillButton label={`+ ${label}`} variant="water" onPress={add} style={[styles.addBtn, { backgroundColor: color }]} textStyle={pale ? { color: mix(color, '#000000', 0.6) } : undefined} testID="add-water" />
         </Animated.View>
       </View>
     </View>

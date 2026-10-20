@@ -38,7 +38,7 @@ export function BottomSheet({ visible, onClose, children, dimColor = 'rgba(30,36
 
   if (!mounted) return null;
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]} pointerEvents="box-none">
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: dimColor }, backdrop]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={dismissable ? onClose : undefined} />
       </Animated.View>

@@ -86,6 +86,8 @@ export function Screen({ children, chrome = 'back', right, scroll = true, style,
   return (
     <View style={[{ flex: 1, backgroundColor: bg }, style]} testID={testID}>
       {body}
+      {/* keeps scrolled content from showing through behind the back/close buttons */}
+      {scroll && chrome !== 'none' && <View pointerEvents="none" style={[styles.barBg, { height: top + 44, backgroundColor: bg }]} />}
       <View style={[styles.bar, { top }]} pointerEvents="box-none">
         {chrome === 'back' ? <BackButton onPress={onBack} /> : <View />}
         <View style={styles.barRight}>
@@ -433,6 +435,7 @@ const styles = StyleSheet.create({
   round: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#D3D6DC', alignItems: 'center', justifyContent: 'center' },
   close: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#D9DCE1', alignItems: 'center', justifyContent: 'center' },
   bar: { position: 'absolute', left: 14, right: 14, height: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  barBg: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0.94 },
   barRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', paddingTop: 12 },
   headerPill: { borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8 },
