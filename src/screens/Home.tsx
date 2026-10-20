@@ -96,7 +96,7 @@ function TipsPill() {
 
 export function Home() {
   const insets = useSafeAreaInsets();
-  const { state, update, addSip, intakeMl, reset } = useStore();
+  const { state, update, addSip, intakeMl, reset, streak, today, deleteEntry } = useStore();
   const [showRemaining, setShowRemaining] = useState(false);
   const [drink, setDrink] = useState<DrinkKind | null>(null);
   const [menu, setMenu] = useState(false);
@@ -146,7 +146,7 @@ export function Home() {
   return (
     <View style={[styles.root, { paddingTop: insets.top + 6 }]}>
       <View style={styles.top}>
-        <StreakBadge streak={state.streak} />
+        <StreakBadge streak={streak} />
         <Bounce
           onPress={() => {
             setGoalDraft(state.goalMl);
@@ -278,7 +278,7 @@ export function Home() {
             label="Undo last sip"
             variant="ghost"
             textStyle={{ fontSize: 14 }}
-            onPress={() => update((s) => ({ sips: s.sips.slice(0, -1) }))}
+            onPress={() => today.length && deleteEntry(state.day, today[today.length - 1].id)}
           />
           <PillButton
             label="Restart onboarding"

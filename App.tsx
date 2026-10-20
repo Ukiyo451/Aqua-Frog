@@ -10,26 +10,34 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StoreProvider, useStore } from './src/lib/store';
 import { WEB_MAX_WIDTH } from './src/lib/webFrame';
+import { NavProvider } from './src/navigation/nav';
+import { SCREENS } from './src/navigation/registry';
 import { Home } from './src/screens/Home';
 import { OnboardingFlow, OnboardingStep } from './src/screens/onboarding/OnboardingFlow';
 
 // `?step=goal` jumps straight to an onboarding page when previewing on web.
 const previewStep =
   Platform.OS === 'web' && typeof window !== 'undefined'
-    ? (new URLSearchParams(window.location.search).get('step') as OnboardingStep | 'home' | null)
+    ? new URLSearchParams(window.location.search).get('step')
     : null;
+const ONBOARDING_STEPS = ['splash', 'welcome', 'firstSip', 'reminders', 'goal', 'feelBest', 'analyzing', 'paywall'];
+// `?step=settings` (any screen name) opens Home with that screen on top
+const previewScreen = previewStep && SCREENS[previewStep] ? previewStep : null;
 
 function Root() {
   const { state, ready } = useStore();
   if (!ready) return <View style={styles.root} />;
-  if (previewStep === 'home' || (state.onboarded && !previewStep)) {
+  const onboardingStep = previewStep && ONBOARDING_STEPS.includes(previewStep) ? (previewStep as OnboardingStep) : null;
+  if (!onboardingStep && (previewStep === 'home' || previewScreen || state.onboarded)) {
     return (
       <Animated.View entering={FadeIn.duration(500)} style={styles.root}>
-        <Home />
+        <NavProvider screens={SCREENS} initial={previewScreen ? [{ name: previewScreen }] : undefined}>
+          <Home />
+        </NavProvider>
       </Animated.View>
     );
   }
-  return <OnboardingFlow initialStep={previewStep ?? undefined} />;
+  return <OnboardingFlow initialStep={onboardingStep ?? undefined} />;
 }
 
 export default function App() {
